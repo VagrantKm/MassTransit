@@ -16,8 +16,6 @@
         {
             protected override void OnCleanupVirtualHost(IModel model)
             {
-                base.OnCleanupVirtualHost(model);
-
                 model.ExchangeDelete(NameFormatter.GetMessageName(typeof(A)).ToString());
                 model.ExchangeDelete(NameFormatter.GetMessageName(typeof(B)).ToString());
             }
@@ -28,6 +26,14 @@
         public class Binding_an_untyped_consumer :
             ConsumerBindingTestFixture
         {
+            [Test]
+            [Order(0)]
+            public async Task Setup()
+            {
+                await InputQueueSendEndpoint.Send(new A());
+                await InputQueueSendEndpoint.Send(new B());
+            }
+
             [Test]
             public async Task Should_receive_the_message_a()
             {
@@ -41,13 +47,6 @@
             }
 
             TestConsumer _testConsumer;
-
-            [OneTimeSetUp]
-            public async Task Setup()
-            {
-                await InputQueueSendEndpoint.Send(new A());
-                await InputQueueSendEndpoint.Send(new B());
-            }
 
             protected override void ConfigureRabbitMqReceiveEndpoint(IRabbitMqReceiveEndpointConfigurator configurator)
             {

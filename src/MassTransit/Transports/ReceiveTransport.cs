@@ -116,25 +116,23 @@ namespace MassTransit.Transports
 
                 try
                 {
+                    RetryContext<TransportStoppingContext> retryContext = null;
+
                     while (!IsStopping)
                     {
-                        RetryContext<TransportStoppingContext> retryContext = null;
                         try
                         {
-                            if (retryContext != null)
-                            {
-                                LogContext.Warning?.Log(retryContext.Exception, "Retrying {Delay}: {Message}", retryContext.Delay,
-                                    retryContext.Exception.Message);
-
-                                if (retryContext.Delay.HasValue)
-                                    await Task.Delay(retryContext.Delay.Value, Stopping).ConfigureAwait(false);
-                            }
+                            if (retryContext?.Delay != null)
+                                await Task.Delay(retryContext.Delay.Value, Stopping).ConfigureAwait(false);
 
                             if (!IsStopping)
                                 await RunTransport().ConfigureAwait(false);
                         }
-                        catch (OperationCanceledException)
+                        catch (OperationCanceledException exception)
                         {
+                            if (retryContext == null)
+                                await NotifyFaulted(exception).ConfigureAwait(false);
+
                             throw;
                         }
                         catch (Exception exception)
@@ -149,7 +147,24 @@ namespace MassTransit.Transports
                             if (retryContext == null && !policyContext.CanRetry(exception, out retryContext))
                                 break;
                         }
+
+                        if (IsStopping)
+                            break;
+
+                        try
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(1), Stopping).ConfigureAwait(false);
+                        }
+                        catch
+                        {
+                            // just a little breather before reconnecting the receive transport
+                        }
                     }
+                }
+                catch (OperationCanceledException exception)
+                {
+                    if (exception.CancellationToken != Stopping)
+                        LogContext.Debug?.Log(exception, "ReceiveTransport Operation Cancelled: {InputAddress}", _context.InputAddress);
                 }
                 catch (Exception exception)
                 {
@@ -198,8 +213,6 @@ namespace MassTransit.Transports
 
             Task NotifyFaulted(Exception exception)
             {
-                LogContext.Error?.Log(exception, "Connection Failed: {InputAddress}", _context.InputAddress);
-
                 return _context.TransportObservers.Faulted(new ReceiveTransportFaultedEvent(_context.InputAddress, exception));
             }
 

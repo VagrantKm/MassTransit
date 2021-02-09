@@ -17,12 +17,13 @@ namespace MassTransit.TestFramework
         AsyncTestFixture
     {
         static int _subscribedObserver;
-        static readonly bool _enableDiagnostics = !bool.TryParse(Environment.GetEnvironmentVariable("CI"), out var isBuildServer) || !isBuildServer;
+        static readonly bool _enableLog = !bool.TryParse(Environment.GetEnvironmentVariable("CI"), out var isBuildServer) || !isBuildServer;
+        static readonly bool _enableDiagnostics = bool.TryParse(Environment.GetEnvironmentVariable("DIAG"), out var enable) && enable;
         protected static readonly TestOutputLoggerFactory LoggerFactory;
 
         static BusTestFixture()
         {
-            LoggerFactory = new TestOutputLoggerFactory(true);
+            LoggerFactory = new TestOutputLoggerFactory(_enableLog);
         }
 
         protected BusTestFixture(BusTestHarness harness)
@@ -39,9 +40,12 @@ namespace MassTransit.TestFramework
         protected IBus Bus => BusTestHarness.Bus;
         protected IBusControl BusControl => BusTestHarness.BusControl;
 
+        public static bool IsLogEnabled => _enableLog;
+
         public static void ConfigureBusDiagnostics(IBusFactoryConfigurator configurator)
         {
-            LogContext.ConfigureCurrentLogContext(LoggerFactory);
+            if (_enableLog)
+                LogContext.ConfigureCurrentLogContext(LoggerFactory);
 
             if (_enableDiagnostics)
             {

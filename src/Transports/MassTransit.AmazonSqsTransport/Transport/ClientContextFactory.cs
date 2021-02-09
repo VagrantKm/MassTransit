@@ -37,8 +37,8 @@
         static async Task<ClientContext> CreateSharedClientContext(Task<ClientContext> context, CancellationToken cancellationToken)
         {
             return context.IsCompletedSuccessfully()
-                ? new SharedClientContext(context.Result, cancellationToken)
-                : new SharedClientContext(await context.OrCanceled(cancellationToken).ConfigureAwait(false), cancellationToken);
+                ? new ScopeClientContext(context.Result, cancellationToken)
+                : new ScopeClientContext(await context.OrCanceled(cancellationToken).ConfigureAwait(false), cancellationToken);
         }
 
         void CreateClientContext(IAsyncPipeContextAgent<ClientContext> asyncContext, CancellationToken cancellationToken)

@@ -7,6 +7,7 @@
 
 
     [TestFixture]
+    [Category("Flaky")]
     public class Using_a_consumer_concurrency_limit :
         RabbitMqTestFixture
     {
@@ -72,11 +73,11 @@
                 while (current > _maxPendingDeliveryCount)
                     Interlocked.CompareExchange(ref _maxPendingDeliveryCount, current, _maxPendingDeliveryCount);
 
-                await Task.Delay(100);
+                await Task.Delay(10);
 
                 Interlocked.Decrement(ref _currentPendingDeliveryCount);
 
-                if (_deliveryCount == _messageCount)
+                if (_deliveryCount >= _messageCount * 2)
                     _complete.TrySetResult(true);
             }
         }

@@ -56,6 +56,18 @@ namespace MassTransit
             return handle;
         }
 
+        ConnectHandle IConsumePipeConnector.ConnectConsumePipe<T>(IPipe<ConsumeContext<T>> pipe, ConnectPipeOptions options)
+        {
+            LogContext.SetCurrentIfNull(_logContext);
+
+            var handle = _consumePipe.ConnectConsumePipe(pipe, options);
+
+            if (_busHandle != null && !_receiveEndpoint.Started.IsCompletedSuccessfully())
+                TaskUtil.Await(_receiveEndpoint.Started);
+
+            return handle;
+        }
+
         ConnectHandle IRequestPipeConnector.ConnectRequestPipe<T>(Guid requestId, IPipe<ConsumeContext<T>> pipe)
         {
             LogContext.SetCurrentIfNull(_logContext);
@@ -198,6 +210,8 @@ namespace MassTransit
 
                 _busHandle = busHandle;
 
+                LogContext.Debug?.Log("Bus started: {HostAddress}", _host.Address);
+
                 return _busHandle;
             }
             catch (Exception ex)
@@ -206,7 +220,7 @@ namespace MassTransit
                 {
                     if (busHandle != null)
                     {
-                        LogContext.Debug?.Log("Bus start faulted, stopping host");
+                        LogContext.Debug?.Log(ex, "Bus start faulted, stopping host");
 
                         await busHandle.StopAsync(cancellationToken).ConfigureAwait(false);
                     }
@@ -355,7 +369,7 @@ namespace MassTransit
                 {
                     var hostAddress = _hostHandle.Ready.IsCompletedSuccessfully()
                         ? _hostHandle.Ready.GetAwaiter().GetResult().HostAddress
-                        : default;
+                        : new Uri(_bus.Address.GetLeftPart(UriPartial.Authority));
 
                     LogContext.Debug?.Log("Stopping host: {HostAddress}", hostAddress);
 

@@ -372,20 +372,13 @@
     public class Processing_another_failing_batch_consumer :
         InMemoryTestFixture
     {
-        public Processing_another_failing_batch_consumer()
-        {
-            TestInactivityTimeout = TimeSpan.FromSeconds(3);
-        }
-
         [Test]
         public async Task Should_fault_once_per_message()
         {
             await InputQueueSendEndpoint.Send(new PingMessage());
             await InputQueueSendEndpoint.Send(new PingMessage());
 
-            await InactivityTask.ContinueWith(t =>
-            {
-            });
+            await InactivityTask;
 
             Assert.That(_individualFaults, Is.EqualTo(2));
             Assert.That(_batchFaults, Is.EqualTo(0));
@@ -409,11 +402,6 @@
     public class Receiving_and_grouping_messages :
         InMemoryTestFixture
     {
-        public Receiving_and_grouping_messages()
-        {
-            TestInactivityTimeout = TimeSpan.FromSeconds(3);
-        }
-
         [Test]
         public async Task Should_receive_one_batch_per_group()
         {
@@ -427,9 +415,7 @@
             await InputQueueSendEndpoint.Send(new PingMessage(), Pipe.Execute<SendContext>(ctx => ctx.CorrelationId = correlation2));
             await InputQueueSendEndpoint.Send(new PingMessage(), Pipe.Execute<SendContext>(ctx => ctx.CorrelationId = correlation2));
 
-            await InactivityTask.ContinueWith(t =>
-            {
-            });
+            await InactivityTask;
 
             var count = await BusTestHarness.Consumed.SelectAsync<PingMessage>().Take(6).Count();
 
@@ -459,11 +445,6 @@
     public class Receiving_and_grouping_messages_by_ref_type :
         InMemoryTestFixture
     {
-        public Receiving_and_grouping_messages_by_ref_type()
-        {
-            TestInactivityTimeout = TimeSpan.FromSeconds(3);
-        }
-
         [Test]
         public async Task Should_receive_one_batch_per_group()
         {
@@ -477,9 +458,7 @@
             await InputQueueSendEndpoint.Send(new PingMessage(), Pipe.Execute<SendContext>(ctx => ctx.CorrelationId = correlation2));
             await InputQueueSendEndpoint.Send(new PingMessage(), Pipe.Execute<SendContext>(ctx => ctx.CorrelationId = correlation2));
 
-            await InactivityTask.ContinueWith(t =>
-            {
-            });
+            await InactivityTask;
 
             var count = await BusTestHarness.Consumed.SelectAsync<PingMessage>().Take(6).Count();
 
